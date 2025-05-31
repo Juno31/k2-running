@@ -1,9 +1,11 @@
 # main.py
 import pandas as pd
-from src import detect_heel_strike_from_y, get_valid_strides, get_joint_work, plot_heel_strikes_with_valid_range, make_report
+from src.common import detect_heel_strike_from_y, get_valid_strides
+from src.energy import get_joint_work, make_energy_report
+from src.consistency import get_joint_sample_entropy, make_consistency_report
 
 # Define datasets
-mot_files = [
+raw_datasets = [
     ("crocs", "data/raw/crocs_mot.xlsx", "data/raw/crocs_marker.xlsx"),
     ("performance", "data/raw/performance_mot.xlsx", "data/raw/performance_marker.xlsx"),
     ("sneakers", "data/raw/sneakers_mot.xlsx", "data/raw/sneakers_marker.xlsx")
@@ -11,10 +13,11 @@ mot_files = [
 
 
 def main():
-    report_data = []
+    energy_report_data = []
+    consistency_report_data = []
 
-    for name, mot_path, marker_path in mot_files:
-        print(f"\nProcessing: {name}")
+    for name, mot_path, marker_path in raw_datasets:
+        print(f"\nStart Processing: {name}")
 
         # Prepare data
         mot_df = pd.read_excel(mot_path)
@@ -33,7 +36,6 @@ def main():
 
         # Prepare calculation parameters
         valid_time = mot_df["time"].to_numpy()[start_idx:end_idx]
-        total_work = 0
         target_joints = [
             "hip_flexion_r",
             "knee_angle_r",
@@ -41,6 +43,8 @@ def main():
         ]
 
         # Calculate average mechanical work per stride
+        total_work = 0
+
         for joint in target_joints:
             joint_data = mot_df[joint].to_numpy()[start_idx:end_idx]
             joint_work = get_joint_work(joint_data, valid_time)
@@ -48,18 +52,19 @@ def main():
 
         avg_work_per_stride = total_work / stride_count
 
+        # Calculate ankle_angle_r sample entropy
+        joint_data = mot_df['ankle_angle_r'].to_numpy()[start_idx:end_idx]
+        embedding_dimension = int((end_idx - start_idx) / stride_count)
+        entropy_results = get_joint_sample_entropy(joint_data, m=embedding_dimension, r_ratio=0.15)
+
         # Print result
         print(f"Valid strides: {stride_count}")
-        print(f"Average work per stride: {avg_work_per_stride:.3f}\n")
-
-        # Visualize analyze range
-        # valid_heel_strikes = [idx for idx in heel_strikes if start_idx <= idx <= end_idx]
-        # plot_heel_strikes_with_valid_range(
-        #     time, rheel_y, heel_strikes, valid_heel_strikes, start_idx, end_idx, title=name
-        # )
+        print(f"Average work per stride: {avg_work_per_stride:.3f}")
+        print(f"Sample Entropy: {entropy_results}")
+        print(f"Embedding Dimension: {embedding_dimension}\n")
 
         # Save data for report
-        report_data.append({
+        energy_report_data.append({
             "name": name,
             "stride_count": stride_count,
             "avg_work": avg_work_per_stride,
@@ -70,8 +75,20 @@ def main():
             "end_idx": end_idx
         })
 
+        consistency_report_data.append({
+            "name": name,
+            "stride_count": stride_count,
+            "sample_entropy": entropy_results,
+            "time": time,
+            "ankle_angle_r": mot_df["ankle_angle_r"].to_numpy(),
+            "start_idx": start_idx,
+            "end_idx": end_idx
+        })
+
     # Generate PDF report
-    make_report(report_data, output_path="./output/energy_efficiency.pdf")
+    make_energy_report(energy_report_data, output_path="./output/energy_efficiency.pdf")
+    make_consistency_report(consistency_report_data, output_path="./output/consistency.pdf")
+
 
 
 if __name__ == '__main__':

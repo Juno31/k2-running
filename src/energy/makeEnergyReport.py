@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-def make_report(report_data, output_path="comparison_report.pdf"):
+
+def make_energy_report(report_data, output_path="comparison_report.pdf"):
     with PdfPages(output_path) as pdf:
         for entry in report_data:
             name = entry["name"]
