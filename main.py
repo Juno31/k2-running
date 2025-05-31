@@ -1,6 +1,6 @@
 # main.py
 import pandas as pd
-from src import detect_heel_strike_from_y, get_valid_strides, get_joint_work, plot_heel_strikes_with_valid_range
+from src import detect_heel_strike_from_y, get_valid_strides, get_joint_work, plot_heel_strikes_with_valid_range, make_report
 
 # Define datasets
 mot_files = [
@@ -11,6 +11,8 @@ mot_files = [
 
 
 def main():
+    report_data = []
+
     for name, mot_path, marker_path in mot_files:
         print(f"\nProcessing: {name}")
 
@@ -51,10 +53,25 @@ def main():
         print(f"Average work per stride: {avg_work_per_stride:.3f}\n")
 
         # Visualize analyze range
-        valid_heel_strikes = [idx for idx in heel_strikes if start_idx <= idx <= end_idx]
-        plot_heel_strikes_with_valid_range(
-            time, rheel_y, heel_strikes, valid_heel_strikes, start_idx, end_idx, title=name
-        )
+        # valid_heel_strikes = [idx for idx in heel_strikes if start_idx <= idx <= end_idx]
+        # plot_heel_strikes_with_valid_range(
+        #     time, rheel_y, heel_strikes, valid_heel_strikes, start_idx, end_idx, title=name
+        # )
+
+        # Save data for report
+        report_data.append({
+            "name": name,
+            "stride_count": stride_count,
+            "avg_work": avg_work_per_stride,
+            "time": time,
+            "rheel_y": rheel_y,
+            "heel_strikes": heel_strikes,
+            "start_idx": start_idx,
+            "end_idx": end_idx
+        })
+
+    # Generate PDF report
+    make_report(report_data, output_path="./output/energy_efficiency.pdf")
 
 
 if __name__ == '__main__':
